@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Арбуз</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app" id="app">
+        <!-- Экран выбора -->
+        <div id="chooseScreen" class="screen screen-center">
+            <div class="logo">🍉</div>
+            <div class="title">Арбуз</div>
+            <div class="subtitle">Текстовый мессенджер</div>
+            
+            <div class="card" onclick="showScreen('registerFree')">
+                <div class="card-icon">🍉</div>
+                <div class="card-title">Арбуз <span class="badge free">Бесплатно</span></div>
+                <div class="card-desc">👥 50 контактов</div>
+            </div>
+            
+            <div class="card gold-card" onclick="showScreen('registerPlus')">
+                <div class="card-icon">🍉⭐</div>
+                <div class="card-title">Арбуз Плюс <span class="badge plus">VIP · 3 мес</span></div>
+                <div class="card-desc">👥 100 контактов · ⭐ VIP · 🔑 Ключ</div>
+            </div>
+        </div>
+
+        <!-- Регистрация обычная -->
+        <div id="registerFree" class="screen hidden">
+            <button class="back-btn" onclick="showScreen('chooseScreen')">← Назад</button>
+            <div class="logo" style="font-size:48px;padding:20px 0;">🍉</div>
+            <div class="title" style="font-size:24px;">Регистрация</div>
+            <div class="subtitle">Арбуз · 50 контактов</div>
+            
+            <label>Имя</label>
+            <input type="text" id="regNameFree" placeholder="Ваше имя">
+            
+            <label>Номер телефона</label>
+            <div class="phone-box">
+                <div class="prefix">+7</div>
+                <input type="tel" id="regPhoneFree" placeholder="999 999-99-99" oninput="formatPhone(this)">
+            </div>
+            
+            <button class="btn btn-primary" onclick="register(false)">Зарегистрироваться</button>
+        </div>
+
+        <!-- Регистрация Плюс -->
+        <div id="registerPlus" class="screen hidden">
+            <button class="back-btn" onclick="showScreen('chooseScreen')">← Назад</button>
+            <div class="logo" style="font-size:48px;padding:20px 0;">🍉⭐</div>
+            <div class="title gold-text" style="font-size:24px;">Арбуз Плюс</div>
+            <div class="subtitle">VIP-ключ на 3 месяца</div>
+            
+            <label>Имя</label>
+            <input type="text" id="regNamePlus" placeholder="Ваше имя">
+            
+            <label>Номер телефона</label>
+            <div class="phone-box">
+                <div class="prefix">+7</div>
+                <input type="tel" id="regPhonePlus" placeholder="999 999-99-99" oninput="formatPhone(this)">
+            </div>
+            
+            <label>VIP-ключ</label>
+            <input type="text" id="regVipKey" placeholder="ARBZ-VIP1-2024-PLUS" style="text-transform:uppercase;letter-spacing:1px;">
+            
+            <button class="btn btn-gold" onclick="register(true)">Активировать на 3 месяца</button>
+        </div>
+
+        <!-- Список чатов -->
+        <div id="chatsScreen" class="screen hidden" style="padding:0;">
+            <div class="nav-bar">
+                <span class="nav-title" id="navTitle">🍉 Арбуз</span>
+                <button class="nav-btn" onclick="showScreen('profileScreen')">Профиль</button>
+            </div>
+            <div class="limit-bar" id="limitBar"></div>
+            <input type="text" class="search-input" id="searchInput" placeholder="Поиск по номеру" oninput="searchUsers()">
+            <div class="list" id="chatsList"></div>
+        </div>
+
+        <!-- Профиль -->
+        <div id="profileScreen" class="screen hidden">
+            <button class="back-btn" onclick="showScreen('chatsScreen')">← Назад</button>
+            <div class="title" style="font-size:24px;padding:20px 0;">Профиль</div>
+            <div class="profile-card">
+                <div class="profile-row"><span>Имя</span><span id="profName"></span></div>
+                <div class="profile-row"><span>Телефон</span><span id="profPhone"></span></div>
+                <div class="profile-row"><span>Версия</span><span id="profVersion"></span></div>
+                <div class="profile-row" id="profExpiryRow"><span>Истекает</span><span id="profExpiry"></span></div>
+            </div>
+            <button class="btn btn-danger" onclick="logout()">Выйти</button>
+        </div>
+
+        <!-- Чат -->
+        <div id="chatScreen" class="screen hidden" style="padding:0;">
+            <div class="chat-header">
+                <button class="back-btn" onclick="showScreen('chatsScreen');loadChats();">←</button>
+                <div class="avatar-small" id="chatAv"></div>
+                <div>
+                    <div class="chat-name" id="chatName"></div>
+                    <div class="chat-phone" id="chatPhone"></div>
+                </div>
+            </div>
+            <div class="messages" id="messagesList"></div>
+            <div class="input-bar">
+                <input type="text" id="msgInput" placeholder="Сообщение" onkeypress="if(event.key==='Enter')sendMessage()">
+                <button class="send-btn" onclick="sendMessage()">↑</button>
+            </div>
+        </div>
+
+        <div class="toast" id="toast"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+                  </html>
