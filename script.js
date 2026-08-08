@@ -1,5 +1,5 @@
 // API конфигурация
-const API_BASE = '/.netlify/functions';
+const API_BASE = '/api';
 let currentUser = null;
 let currentChat = null;
 
@@ -21,7 +21,8 @@ const VIP_DAYS = 90;
 // Показать экран
 function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
-    document.getElementById(id).classList.remove('hidden');
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('hidden');
     if (id === 'chatsScreen') loadChats();
 }
 
@@ -39,6 +40,7 @@ function formatPhone(input) {
 // Тост
 function toast(msg, type='error') {
     const t = document.getElementById('toast');
+    if(!t) return;
     t.textContent = msg;
     t.className = 'toast show ' + type;
     setTimeout(() => t.classList.remove('show'), 3000);
@@ -54,6 +56,7 @@ async function api(path, data=null) {
         });
         return await res.json();
     } catch(e) {
+        console.error('API Error:', e);
         toast('Ошибка соединения');
         return null;
     }
@@ -65,9 +68,9 @@ async function register(isPlus) {
     const phone = document.getElementById(isPlus ? 'regPhonePlus' : 'regPhoneFree').value.replace(/\D/g,'');
     const vipKey = isPlus ? document.getElementById('regVipKey').value.trim().toUpperCase() : null;
     
-    if(!name) return toast('Введите имя');
-    if(phone.length !== 10) return toast('Введите номер полностью');
-    if(isPlus && !VIP_KEYS.includes(vipKey)) return toast('Неверный VIP-ключ');
+    if(!name) { toast('Введите имя'); return; }
+    if(phone.length !== 10) { toast('Введите номер полностью'); return; }
+    if(isPlus && !VIP_KEYS.includes(vipKey)) { toast('Неверный VIP-ключ'); return; }
     
     const result = await api('/register', {
         name,
@@ -79,8 +82,8 @@ async function register(isPlus) {
     if(result && result.success) {
         currentUser = result.user;
         localStorage.setItem('arbuz_user', JSON.stringify(currentUser));
-        showScreen('chatsScreen');
         document.getElementById('navTitle').textContent = isPlus ? '🍉⭐ Арбуз Плюс' : '🍉 Арбуз';
+        showScreen('chatsScreen');
         toast('Регистрация успешна!', 'success');
     }
 }
@@ -95,18 +98,19 @@ async function loadChats() {
     
     const result = await api('/get-chats', {userId: currentUser.id});
     const list = document.getElementById('chatsList');
+    if(!list) return;
     
     if(!result || !result.chats || result.chats.length === 0) {
-        list.innerHTML = '<div style="text-align:center;color:#8E8E93;padding:40px;">Нет чатов</div>';
+        list.innerHTML = '<div style="text-align:center;color:#8E8E93;padding:40px;">Нет чатов. Используйте поиск.</div>';
         return;
     }
     
     list.innerHTML = result.chats.map(c => `
-        <div class="list-item" onclick="openChat('${c.chatId}','${c.user.id}','${c.user.name}','${c.user.phone}')">
-            <div class="avatar ${c.user.isPlus ? 'gold' : ''}">${c.user.name[0]}</div>
+        <div class="list-item" onclick="openChat('${c.chatId}','${c.user?.id||''}','${c.user?.name||'?'}','${c.user?.phone||''}')">
+            <div class="avatar ${c.user?.isPlus ? 'gold' : ''}">${(c.user?.name||'?')[0]}</div>
             <div class="item-info">
-                <div class="item-name">${c.user.name} ${c.user.isPlus ? '⭐' : ''}</div>
-                <div class="item-sub">${c.lastMessage || c.user.phone}</div>
+                <div class="item-name">${c.user?.name||'?'} ${c.user?.isPlus ? '⭐' : ''}</div>
+                <div class="item-sub">${c.lastMessage || c.user?.phone || ''}</div>
             </div>
         </div>
     `).join('');
@@ -119,6 +123,7 @@ async function searchUsers() {
     
     const result = await api('/search', {query: q});
     const list = document.getElementById('chatsList');
+    if(!list) return;
     
     if(!result || !result.users || result.users.length === 0) {
         list.innerHTML = '<div style="text-align:center;color:#8E8E93;padding:40px;">Не найдено</div>';
@@ -136,16 +141,7 @@ async function searchUsers() {
     `).join('');
 }
 
-// Открыть чат
-async function openChat(chatId, userId, name, phone) {
-    currentChat = {chatId, userId, name, phone};
-    document.getElementById('chatAv').textContent = name[0];
-    document.getElementById('chatName').textContent = name;
-    document.getElementById('chatPhone').textContent = phone;
-    showScreen('chatScreen');
-    await loadMessages();
-}
-
+// Создать чат
 async function startChat(userId) {
     const result = await api('/send', {
         type: 'createChat',
@@ -153,9 +149,19 @@ async function startChat(userId) {
         targetId: userId
     });
     if(result && result.chatId) {
-        // Обновим и откроем
         loadChats();
     }
+}
+
+// Открыть чат
+async function openChat(chatId, userId, name, phone) {
+    currentChat = {chatId, userId, name, phone};
+    document.getElementById('chatAv').textContent = name[0] || '?';
+    document.getElementById('chatName').textContent = name;
+    document.getElementById('chatPhone').textContent = phone;
+    showScreen('chatScreen');
+    loadMessages();
+    setInterval(loadMessages, 2000); // Автообновление
 }
 
 // Загрузка сообщений
@@ -163,8 +169,9 @@ async function loadMessages() {
     if(!currentChat) return;
     const result = await api('/get-messages', {chatId: currentChat.chatId});
     const list = document.getElementById('messagesList');
+    if(!list) return;
     
-    if(!result || !result.messages) {
+    if(!result || !result.messages || result.messages.length === 0) {
         list.innerHTML = '<div style="text-align:center;color:#8E8E93;padding:40px;">Нет сообщений</div>';
         return;
     }
@@ -196,6 +203,25 @@ async function sendMessage() {
     loadMessages();
 }
 
+// Профиль
+function showProfile() {
+    if(!currentUser) return;
+    document.getElementById('profName').textContent = currentUser.name;
+    document.getElementById('profPhone').textContent = currentUser.phone;
+    document.getElementById('profVersion').textContent = currentUser.isPlus ? '🍉⭐ Арбуз Плюс' : '🍉 Арбуз';
+    
+    const expRow = document.getElementById('profExpiryRow');
+    if(currentUser.isPlus && currentUser.vipExpiry) {
+        expRow.style.display = 'flex';
+        const days = Math.ceil((currentUser.vipExpiry - Date.now()) / (1000*60*60*24));
+        document.getElementById('profExpiry').textContent = days > 0 ? `${days} дней` : 'Истёк';
+    } else {
+        expRow.style.display = 'none';
+    }
+    
+    showScreen('profileScreen');
+}
+
 // Выход
 function logout() {
     localStorage.removeItem('arbuz_user');
@@ -208,5 +234,5 @@ const saved = localStorage.getItem('arbuz_user');
 if(saved) {
     currentUser = JSON.parse(saved);
     showScreen('chatsScreen');
-    loadChats();
-  }
+    document.getElementById('navTitle').textContent = currentUser.isPlus ? '🍉⭐ Арбуз Плюс' : '🍉 Арбуз';
+}
