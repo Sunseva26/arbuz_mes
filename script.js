@@ -1,7 +1,15 @@
-// API конфигурация
-const API_BASE = '/api';
+// JSONbin конфигурация
+const JSONBIN_API_KEY = "$2a$10$ZL65O5wkLuGAQhKUTIQwd.GcojkLmcy/IMMUB5jTqLDuZQaDCdoCG";
+const JSONBIN_BIN_ID = "6a776d38f5f4af5e29fc12de";
+const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
+const JSONBIN_HEADERS = {
+    "X-Master-Key": JSONBIN_API_KEY,
+    "Content-Type": "application/json"
+};
+
 let currentUser = null;
 let currentChat = null;
+let updateInterval = null;
 
 // VIP ключи
 const VIP_KEYS = [
@@ -14,9 +22,32 @@ const VIP_KEYS = [
     "ARBZ-VIP19-2024-DYNASTY","ARBZ-VIP20-2024-SUPREME"
 ];
 
-const MAX_FREE = 50;
-const MAX_PLUS = 100;
-const VIP_DAYS = 90;
+// Чтение данных из JSONbin
+async function readData() {
+    try {
+        const res = await fetch(JSONBIN_URL + "/latest", {
+            headers: { "X-Master-Key": JSONBIN_API_KEY }
+        });
+        const data = await res.json();
+        return data.record;
+    } catch(e) {
+        console.error("Ошибка чтения:", e);
+        return { users: [], chats: [], messages: [] };
+    }
+}
+
+// Запись данных в JSONbin
+async function writeData(record) {
+    try {
+        await fetch(JSONBIN_URL, {
+            method: "PUT",
+            headers: JSONBIN_HEADERS,
+            body: JSON.stringify(record)
+        });
+    } catch(e) {
+        console.error("Ошибка записи:", e);
+    }
+}
 
 // Показать экран
 function showScreen(id) {
@@ -46,22 +77,6 @@ function toast(msg, type='error') {
     setTimeout(() => t.classList.remove('show'), 3000);
 }
 
-// API запросы
-async function api(path, data=null) {
-    try {
-        const res = await fetch(API_BASE + path, {
-            method: data ? 'POST' : 'GET',
-            headers: {'Content-Type':'application/json'},
-            body: data ? JSON.stringify(data) : null
-        });
-        return await res.json();
-    } catch(e) {
-        console.error('API Error:', e);
-        toast('Ошибка соединения');
-        return null;
-    }
-}
-
 // Регистрация
 async function register(isPlus) {
     const name = document.getElementById(isPlus ? 'regNamePlus' : 'regNameFree').value.trim();
@@ -72,20 +87,38 @@ async function register(isPlus) {
     if(phone.length !== 10) { toast('Введите номер полностью'); return; }
     if(isPlus && !VIP_KEYS.includes(vipKey)) { toast('Неверный VIP-ключ'); return; }
     
-    const result = await api('/register', {
-        name,
-        phone: '+7'+phone,
-        isPlus,
-        vipKey: isPlus ? vipKey : null
-    });
+    const data = await readData();
     
-    if(result && result.success) {
-        currentUser = result.user;
-        localStorage.setItem('arbuz_user', JSON.stringify(currentUser));
-        document.getElementById('navTitle').textContent = isPlus ? '🍉⭐ Арбуз Плюс' : '🍉 Арбуз';
-        showScreen('chatsScreen');
-        toast('Регистрация успешна!', 'success');
+    // Проверяем, есть ли уже такой пользователь
+    let user = data.users.find(u => u.phone === '+7'+phone);
+    
+    if(user) {
+        user.name = name;
+        if(isPlus) {
+            user.isPlus = true;
+            user.vipKey = vipKey;
+            user.vipExpiry = Date.now() + 90*24*60*60*1000;
+        }
+    } else {
+        user = {
+            id: Date.now().toString() + Math.random().toString(36).slice(2,9),
+            name,
+            phone: '+7'+phone,
+            isPlus: isPlus || false,
+            vipKey: isPlus ? vipKey : null,
+            vipExpiry: isPlus ? Date.now() + 90*24*60*60*1000 : null,
+            createdAt: Date.now()
+        };
+        data.users.push(user);
     }
+    
+    await writeData(data);
+    
+    currentUser = user;
+    localStorage.setItem('arbuz_user', JSON.stringify(currentUser));
+    document.getElementById('navTitle').textContent = isPlus ? '🍉⭐ Арбуз Плюс' : '🍉 Арбуз';
+    showScreen('chatsScreen');
+    toast('Регистрация успешна!', 'success');
 }
 
 // Загрузка чатов
@@ -96,41 +129,52 @@ async function loadChats() {
         else return;
     }
     
-    const result = await api('/get-chats', {userId: currentUser.id});
+    const data = await readData();
     const list = document.getElementById('chatsList');
     if(!list) return;
     
-    if(!result || !result.chats || result.chats.length === 0) {
+    const userChats = data.chats.filter(c => c.participants.includes(currentUser.id));
+    
+    if(userChats.length === 0) {
         list.innerHTML = '<div style="text-align:center;color:#8E8E93;padding:40px;">Нет чатов. Используйте поиск.</div>';
         return;
     }
     
-    list.innerHTML = result.chats.map(c => `
-        <div class="list-item" onclick="openChat('${c.chatId}','${c.user?.id||''}','${c.user?.name||'?'}','${c.user?.phone||''}')">
-            <div class="avatar ${c.user?.isPlus ? 'gold' : ''}">${(c.user?.name||'?')[0]}</div>
-            <div class="item-info">
-                <div class="item-name">${c.user?.name||'?'} ${c.user?.isPlus ? '⭐' : ''}</div>
-                <div class="item-sub">${c.lastMessage || c.user?.phone || ''}</div>
+    list.innerHTML = userChats.map(c => {
+        const otherId = c.participants.find(id => id !== currentUser.id);
+        const otherUser = data.users.find(u => u.id === otherId);
+        const chatMsgs = data.messages.filter(m => m.chatId === c.id);
+        const lastMsg = chatMsgs.length > 0 ? chatMsgs[chatMsgs.length-1] : null;
+        
+        return `
+            <div class="list-item" onclick="openChat('${c.id}','${otherUser?.id||''}','${otherUser?.name||'?'}','${otherUser?.phone||''}')">
+                <div class="avatar ${otherUser?.isPlus ? 'gold' : ''}">${(otherUser?.name||'?')[0]}</div>
+                <div class="item-info">
+                    <div class="item-name">${otherUser?.name||'?'} ${otherUser?.isPlus ? '⭐' : ''}</div>
+                    <div class="item-sub">${lastMsg ? lastMsg.text : otherUser?.phone||''}</div>
+                </div>
             </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
-// Поиск
+// Поиск пользователей
 async function searchUsers() {
     const q = document.getElementById('searchInput').value.replace(/\D/g,'');
     if(q.length < 3) { loadChats(); return; }
     
-    const result = await api('/search', {query: q});
+    const data = await readData();
     const list = document.getElementById('chatsList');
     if(!list) return;
     
-    if(!result || !result.users || result.users.length === 0) {
+    const found = data.users.filter(u => u.phone.includes(q) && u.id !== currentUser?.id);
+    
+    if(found.length === 0) {
         list.innerHTML = '<div style="text-align:center;color:#8E8E93;padding:40px;">Не найдено</div>';
         return;
     }
     
-    list.innerHTML = result.users.map(u => `
+    list.innerHTML = found.map(u => `
         <div class="list-item" onclick="startChat('${u.id}')">
             <div class="avatar ${u.isPlus ? 'gold' : ''}">${u.name[0]}</div>
             <div class="item-info">
@@ -143,40 +187,52 @@ async function searchUsers() {
 
 // Создать чат
 async function startChat(userId) {
-    const result = await api('/send', {
-        type: 'createChat',
-        userId: currentUser.id,
-        targetId: userId
-    });
-    if(result && result.chatId) {
-        loadChats();
+    const data = await readData();
+    const chatId = [currentUser.id, userId].sort().join('_');
+    
+    const exists = data.chats.find(c => c.id === chatId);
+    if(!exists) {
+        data.chats.push({
+            id: chatId,
+            participants: [currentUser.id, userId],
+            createdAt: Date.now()
+        });
+        await writeData(data);
     }
+    
+    loadChats();
 }
 
 // Открыть чат
-async function openChat(chatId, userId, name, phone) {
-    currentChat = {chatId, userId, name, phone};
+function openChat(chatId, userId, name, phone) {
+    currentChat = { chatId, userId, name, phone };
     document.getElementById('chatAv').textContent = name[0] || '?';
+    document.getElementById('chatAv').className = 'avatar-small';
     document.getElementById('chatName').textContent = name;
     document.getElementById('chatPhone').textContent = phone;
     showScreen('chatScreen');
     loadMessages();
-    setInterval(loadMessages, 2000); // Автообновление
+    
+    if(updateInterval) clearInterval(updateInterval);
+    updateInterval = setInterval(loadMessages, 2000);
 }
 
 // Загрузка сообщений
 async function loadMessages() {
     if(!currentChat) return;
-    const result = await api('/get-messages', {chatId: currentChat.chatId});
+    
+    const data = await readData();
     const list = document.getElementById('messagesList');
     if(!list) return;
     
-    if(!result || !result.messages || result.messages.length === 0) {
+    const chatMsgs = data.messages.filter(m => m.chatId === currentChat.chatId);
+    
+    if(chatMsgs.length === 0) {
         list.innerHTML = '<div style="text-align:center;color:#8E8E93;padding:40px;">Нет сообщений</div>';
         return;
     }
     
-    list.innerHTML = result.messages.map(m => `
+    list.innerHTML = chatMsgs.map(m => `
         <div class="message ${m.senderId === currentUser.id ? 'sent' : 'received'}">
             ${m.text}
             <div class="msg-time">${new Date(m.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</div>
@@ -191,14 +247,16 @@ async function sendMessage() {
     const text = input.value.trim();
     if(!text || !currentChat) return;
     
-    await api('/send', {
-        type: 'message',
+    const data = await readData();
+    data.messages.push({
         chatId: currentChat.chatId,
         senderId: currentUser.id,
+        senderName: currentUser.name,
         text,
-        senderName: currentUser.name
+        timestamp: Date.now()
     });
     
+    await writeData(data);
     input.value = '';
     loadMessages();
 }
@@ -224,8 +282,10 @@ function showProfile() {
 
 // Выход
 function logout() {
+    if(updateInterval) clearInterval(updateInterval);
     localStorage.removeItem('arbuz_user');
     currentUser = null;
+    currentChat = null;
     showScreen('chooseScreen');
 }
 
