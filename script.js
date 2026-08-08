@@ -2,10 +2,6 @@
 const JSONBIN_API_KEY = "$2a$10$ZL65O5wkLuGAQhKUTIQwd.GcojkLmcy/IMMUB5jTqLDuZQaDCdoCG";
 const JSONBIN_BIN_ID = "6a776d38f5f4af5e29fc12de";
 const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`;
-const JSONBIN_HEADERS = {
-    "X-Master-Key": JSONBIN_API_KEY,
-    "Content-Type": "application/json"
-};
 
 let currentUser = null;
 let currentChat = null;
@@ -22,7 +18,7 @@ const VIP_KEYS = [
     "ARBZ-VIP19-2024-DYNASTY","ARBZ-VIP20-2024-SUPREME"
 ];
 
-// Чтение данных из JSONbin
+// API запросы к JSONbin
 async function readData() {
     try {
         const res = await fetch(JSONBIN_URL + "/latest", {
@@ -36,12 +32,14 @@ async function readData() {
     }
 }
 
-// Запись данных в JSONbin
 async function writeData(record) {
     try {
         await fetch(JSONBIN_URL, {
             method: "PUT",
-            headers: JSONBIN_HEADERS,
+            headers: {
+                "X-Master-Key": JSONBIN_API_KEY,
+                "Content-Type": "application/json"
+            },
             body: JSON.stringify(record)
         });
     } catch(e) {
@@ -79,18 +77,26 @@ function toast(msg, type='error') {
 
 // Регистрация
 async function register(isPlus) {
-    const name = document.getElementById(isPlus ? 'regNamePlus' : 'regNameFree').value.trim();
-    const phone = document.getElementById(isPlus ? 'regPhonePlus' : 'regPhoneFree').value.replace(/\D/g,'');
-    const vipKey = isPlus ? document.getElementById('regVipKey').value.trim().toUpperCase() : null;
+    const nameField = document.getElementById(isPlus ? 'regNamePlus' : 'regNameFree');
+    const phoneField = document.getElementById(isPlus ? 'regPhonePlus' : 'regPhoneFree');
+    
+    if(!nameField || !phoneField) {
+        toast('Ошибка формы');
+        return;
+    }
+    
+    const name = nameField.value.trim();
+    const phone = phoneField.value.replace(/\D/g,'');
+    const vipKey = isPlus ? document.getElementById('regVipKey')?.value.trim().toUpperCase() : null;
     
     if(!name) { toast('Введите имя'); return; }
-    if(phone.length !== 10) { toast('Введите номер полностью'); return; }
+    if(phone.length !== 10) { toast('Введите номер полностью (10 цифр)'); return; }
     if(isPlus && !VIP_KEYS.includes(vipKey)) { toast('Неверный VIP-ключ'); return; }
     
     const data = await readData();
+    const fullPhone = '+7' + phone;
     
-    // Проверяем, есть ли уже такой пользователь
-    let user = data.users.find(u => u.phone === '+7'+phone);
+    let user = data.users.find(u => u.phone === fullPhone);
     
     if(user) {
         user.name = name;
@@ -103,7 +109,7 @@ async function register(isPlus) {
         user = {
             id: Date.now().toString() + Math.random().toString(36).slice(2,9),
             name,
-            phone: '+7'+phone,
+            phone: fullPhone,
             isPlus: isPlus || false,
             vipKey: isPlus ? vipKey : null,
             vipExpiry: isPlus ? Date.now() + 90*24*60*60*1000 : null,
@@ -113,10 +119,12 @@ async function register(isPlus) {
     }
     
     await writeData(data);
-    
     currentUser = user;
     localStorage.setItem('arbuz_user', JSON.stringify(currentUser));
-    document.getElementById('navTitle').textContent = isPlus ? '🍉⭐ Арбуз Плюс' : '🍉 Арбуз';
+    
+    const navTitle = document.getElementById('navTitle');
+    if(navTitle) navTitle.textContent = isPlus ? '🍉⭐ Арбуз Плюс' : '🍉 Арбуз';
+    
     showScreen('chatsScreen');
     toast('Регистрация успешна!', 'success');
 }
@@ -158,9 +166,9 @@ async function loadChats() {
     }).join('');
 }
 
-// Поиск пользователей
+// Поиск
 async function searchUsers() {
-    const q = document.getElementById('searchInput').value.replace(/\D/g,'');
+    const q = document.getElementById('searchInput')?.value.replace(/\D/g,'') || '';
     if(q.length < 3) { loadChats(); return; }
     
     const data = await readData();
@@ -190,8 +198,7 @@ async function startChat(userId) {
     const data = await readData();
     const chatId = [currentUser.id, userId].sort().join('_');
     
-    const exists = data.chats.find(c => c.id === chatId);
-    if(!exists) {
+    if(!data.chats.find(c => c.id === chatId)) {
         data.chats.push({
             id: chatId,
             participants: [currentUser.id, userId],
@@ -206,10 +213,15 @@ async function startChat(userId) {
 // Открыть чат
 function openChat(chatId, userId, name, phone) {
     currentChat = { chatId, userId, name, phone };
-    document.getElementById('chatAv').textContent = name[0] || '?';
-    document.getElementById('chatAv').className = 'avatar-small';
-    document.getElementById('chatName').textContent = name;
-    document.getElementById('chatPhone').textContent = phone;
+    
+    const av = document.getElementById('chatAv');
+    const nameEl = document.getElementById('chatName');
+    const phoneEl = document.getElementById('chatPhone');
+    
+    if(av) av.textContent = name[0] || '?';
+    if(nameEl) nameEl.textContent = name;
+    if(phoneEl) phoneEl.textContent = phone;
+    
     showScreen('chatScreen');
     loadMessages();
     
@@ -225,14 +237,14 @@ async function loadMessages() {
     const list = document.getElementById('messagesList');
     if(!list) return;
     
-    const chatMsgs = data.messages.filter(m => m.chatId === currentChat.chatId);
+    const msgs = data.messages.filter(m => m.chatId === currentChat.chatId);
     
-    if(chatMsgs.length === 0) {
+    if(msgs.length === 0) {
         list.innerHTML = '<div style="text-align:center;color:#8E8E93;padding:40px;">Нет сообщений</div>';
         return;
     }
     
-    list.innerHTML = chatMsgs.map(m => `
+    list.innerHTML = msgs.map(m => `
         <div class="message ${m.senderId === currentUser.id ? 'sent' : 'received'}">
             ${m.text}
             <div class="msg-time">${new Date(m.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</div>
@@ -244,6 +256,8 @@ async function loadMessages() {
 // Отправить сообщение
 async function sendMessage() {
     const input = document.getElementById('msgInput');
+    if(!input) return;
+    
     const text = input.value.trim();
     if(!text || !currentChat) return;
     
@@ -264,17 +278,19 @@ async function sendMessage() {
 // Профиль
 function showProfile() {
     if(!currentUser) return;
+    
     document.getElementById('profName').textContent = currentUser.name;
     document.getElementById('profPhone').textContent = currentUser.phone;
     document.getElementById('profVersion').textContent = currentUser.isPlus ? '🍉⭐ Арбуз Плюс' : '🍉 Арбуз';
     
     const expRow = document.getElementById('profExpiryRow');
     if(currentUser.isPlus && currentUser.vipExpiry) {
-        expRow.style.display = 'flex';
+        if(expRow) expRow.style.display = 'flex';
         const days = Math.ceil((currentUser.vipExpiry - Date.now()) / (1000*60*60*24));
-        document.getElementById('profExpiry').textContent = days > 0 ? `${days} дней` : 'Истёк';
+        const expEl = document.getElementById('profExpiry');
+        if(expEl) expEl.textContent = days > 0 ? `${days} дней` : 'Истёк';
     } else {
-        expRow.style.display = 'none';
+        if(expRow) expRow.style.display = 'none';
     }
     
     showScreen('profileScreen');
@@ -289,10 +305,51 @@ function logout() {
     showScreen('chooseScreen');
 }
 
+// Обработчики событий
+document.addEventListener('DOMContentLoaded', function() {
+    // Кнопки выбора версии
+    document.getElementById('cardFree')?.addEventListener('click', () => showScreen('registerFree'));
+    document.getElementById('cardPlus')?.addEventListener('click', () => showScreen('registerPlus'));
+    
+    // Кнопки назад
+    document.getElementById('backFree')?.addEventListener('click', () => showScreen('chooseScreen'));
+    document.getElementById('backPlus')?.addEventListener('click', () => showScreen('chooseScreen'));
+    
+    // Кнопки регистрации
+    document.getElementById('btnRegFree')?.addEventListener('click', () => register(false));
+    document.getElementById('btnRegPlus')?.addEventListener('click', () => register(true));
+    
+    // Поиск
+    document.getElementById('searchInput')?.addEventListener('input', searchUsers);
+    
+    // Отправка сообщения
+    document.getElementById('sendBtn')?.addEventListener('click', sendMessage);
+    document.getElementById('msgInput')?.addEventListener('keypress', function(e) {
+        if(e.key === 'Enter') sendMessage();
+    });
+    
+    // Выход
+    document.getElementById('btnLogout')?.addEventListener('click', logout);
+    
+    // Профиль
+    document.getElementById('btnProfile')?.addEventListener('click', showProfile);
+    document.getElementById('btnBackProfile')?.addEventListener('click', () => showScreen('chatsScreen'));
+    
+    // Назад из чата
+    document.getElementById('btnBack')?.addEventListener('click', function() {
+        if(updateInterval) clearInterval(updateInterval);
+        showScreen('chatsScreen');
+        loadChats();
+    });
+});
+
 // Инициализация
 const saved = localStorage.getItem('arbuz_user');
 if(saved) {
     currentUser = JSON.parse(saved);
-    showScreen('chatsScreen');
-    document.getElementById('navTitle').textContent = currentUser.isPlus ? '🍉⭐ Арбуз Плюс' : '🍉 Арбуз';
-}
+    setTimeout(() => {
+        showScreen('chatsScreen');
+        const navTitle = document.getElementById('navTitle');
+        if(navTitle) navTitle.textContent = currentUser.isPlus ? '🍉⭐ Арбуз Плюс' : '🍉 Арбуз';
+    }, 100);
+                                                                     }
