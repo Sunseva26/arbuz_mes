@@ -22,11 +22,22 @@ async function read() {
     return d.record;
 }
 
-async function write(record) {
-    await fetch(URL, {
-        method: "PUT",
-        headers: { "X-Master-Key": KEY, "Content-Type": "application/json" },
-        body: JSON.stringify(record)
+async function read() {
+    try {
+        let controller = new AbortController();
+        let timeout = setTimeout(() => controller.abort(), 8000);
+        let r = await fetch(URL + "/latest", { 
+            headers: { "X-Master-Key": KEY },
+            signal: controller.signal
+        });
+        clearTimeout(timeout);
+        let d = await r.json();
+        return d.record;
+    } catch(e) {
+        alert('Ошибка чтения: ' + e.message);
+        return { users: [], chats: [], messages: [] };
+    }
+}
     });
 }
 
