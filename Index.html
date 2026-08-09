@@ -30,11 +30,7 @@
             <label>Имя</label><input type="text" id="regNameFree" placeholder="Ваше имя">
             <label>Номер телефона</label>
             <div class="phone-box"><div class="prefix">+7</div><input type="tel" id="regPhoneFree" placeholder="999 999-99-99" oninput="formatPhone(this)"></div>
-            <button class="btn btn-primary" id="btnRegFree">Получить код</button>
-            <div id="codeBlockFree" class="hidden">
-                <label>Код из Telegram (@codecap_bot)</label><input type="text" id="codeFree" placeholder="000000" maxlength="6">
-                <button class="btn btn-primary" id="confirmFree">Подтвердить</button>
-            </div>
+            <button class="btn btn-primary" id="btnRegFree">Зарегистрироваться</button>
         </div>
 
         <div id="registerPlus" class="screen hidden">
@@ -46,11 +42,7 @@
             <label>Номер телефона</label>
             <div class="phone-box"><div class="prefix">+7</div><input type="tel" id="regPhonePlus" placeholder="999 999-99-99" oninput="formatPhone(this)"></div>
             <label>VIP-ключ</label><input type="text" id="regVipKey" placeholder="ARBZ-VIP1-2024-PLUS" style="text-transform:uppercase;letter-spacing:1px;">
-            <button class="btn btn-gold" id="btnRegPlus">Получить код</button>
-            <div id="codeBlockPlus" class="hidden">
-                <label>Код из Telegram (@codecap_bot)</label><input type="text" id="codePlus" placeholder="000000" maxlength="6">
-                <button class="btn btn-gold" id="confirmPlus">Подтвердить</button>
-            </div>
+            <button class="btn btn-gold" id="btnRegPlus">Зарегистрироваться</button>
         </div>
 
         <div id="chatsScreen" class="screen hidden" style="padding:0;">
