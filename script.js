@@ -28,7 +28,6 @@ async function read() {
         let content = atob(d.content);
         return JSON.parse(content);
     } catch(e) {
-        console.error("Ошибка чтения:", e);
         return { users: [], chats: [], messages: [] };
     }
 }
@@ -40,7 +39,6 @@ async function write(record) {
         });
         let d = await r.json();
         let sha = d.sha;
-        
         let content = btoa(JSON.stringify(record, null, 2));
         
         await fetch(GITHUB_API, {
@@ -218,6 +216,38 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('sendBtn').onclick = sendMessage;
     document.getElementById('msgInput').onkeypress = e => { if(e.key==='Enter') sendMessage(); };
     document.getElementById('btnBack').onclick = () => { if(timer)clearInterval(timer); show('chatsScreen'); loadChats(); };
+    
+    // Профиль
+    document.getElementById('btnProfile').onclick = function() {
+        if(!currentUser) return;
+        document.getElementById('profName').textContent = currentUser.name;
+        document.getElementById('profPhone').textContent = currentUser.phone;
+        document.getElementById('profVersion').textContent = currentUser.isPlus ? '🍉⭐ Арбуз Плюс' : '🍉 Арбуз';
+        
+        let expRow = document.getElementById('profExpiryRow');
+        if(currentUser.isPlus && currentUser.vipExpiry) {
+            expRow.style.display = 'flex';
+            let days = Math.ceil((currentUser.vipExpiry - Date.now()) / (1000*60*60*24));
+            document.getElementById('profExpiry').textContent = days > 0 ? days + ' дней' : 'Истёк';
+        } else {
+            expRow.style.display = 'none';
+        }
+        
+        show('profileScreen');
+    };
+    
+    document.getElementById('btnBackProfile').onclick = function() {
+        show('chatsScreen');
+        loadChats();
+    };
+    
+    document.getElementById('btnLogout').onclick = function() {
+        if(timer) clearInterval(timer);
+        localStorage.removeItem('arbuz_user');
+        currentUser = null;
+        currentChat = null;
+        show('chooseScreen');
+    };
     
     let saved = localStorage.getItem('arbuz_user');
     if(saved) { currentUser = JSON.parse(saved); show('chatsScreen'); }
