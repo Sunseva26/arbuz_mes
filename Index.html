@@ -8,113 +8,80 @@
 </head>
 <body>
     <div class="app" id="app">
-        <!-- Выбор версии -->
         <div id="chooseScreen" class="screen screen-center">
             <div class="logo">🍉</div>
             <div class="title">Арбуз</div>
             <div class="subtitle">Текстовый мессенджер</div>
-            
             <div class="card" id="cardFree">
                 <div class="card-icon">🍉</div>
-                <div>
-                    <div class="card-title">Арбуз <span class="badge free">Бесплатно</span></div>
-                    <div class="card-desc">👥 50 контактов</div>
-                </div>
+                <div><div class="card-title">Арбуз <span class="badge free">Бесплатно</span></div><div class="card-desc">👥 50 контактов</div></div>
             </div>
-            
             <div class="card gold-card" id="cardPlus">
                 <div class="card-icon">🍉⭐</div>
-                <div>
-                    <div class="card-title">Арбуз Плюс <span class="badge plus">VIP · 3 мес</span></div>
-                    <div class="card-desc">👥 100 контактов · ⭐ VIP · 🔑 Ключ</div>
-                </div>
+                <div><div class="card-title">Арбуз Плюс <span class="badge plus">VIP · 3 мес</span></div><div class="card-desc">👥 100 контактов · ⭐ VIP · 🔑 Ключ</div></div>
             </div>
         </div>
 
-        <!-- Регистрация обычная -->
         <div id="registerFree" class="screen hidden">
             <button class="back-btn" id="backFree">← Назад</button>
             <div class="logo" style="font-size:48px;padding:20px 0;">🍉</div>
             <div class="title" style="font-size:24px;">Регистрация</div>
             <div class="subtitle">Арбуз · 50 контактов</div>
-            
-            <label>Имя</label>
-            <input type="text" id="regNameFree" placeholder="Ваше имя">
-            
+            <label>Имя</label><input type="text" id="regNameFree" placeholder="Ваше имя">
             <label>Номер телефона</label>
-            <div class="phone-box">
-                <div class="prefix">+7</div>
-                <input type="tel" id="regPhoneFree" placeholder="999 999-99-99" oninput="formatPhone(this)">
+            <div class="phone-box"><div class="prefix">+7</div><input type="tel" id="regPhoneFree" placeholder="999 999-99-99" oninput="formatPhone(this)"></div>
+            <button class="btn btn-primary" id="btnRegFree">Получить код</button>
+            <div id="codeBlockFree" class="hidden">
+                <label>Код из Telegram (@codecap_bot)</label><input type="text" id="codeFree" placeholder="000000" maxlength="6">
+                <button class="btn btn-primary" id="confirmFree">Подтвердить</button>
             </div>
-            
-            <button class="btn btn-primary" id="btnRegFree">Зарегистрироваться</button>
         </div>
 
-        <!-- Регистрация Плюс -->
         <div id="registerPlus" class="screen hidden">
             <button class="back-btn" id="backPlus">← Назад</button>
             <div class="logo" style="font-size:48px;padding:20px 0;">🍉⭐</div>
             <div class="title gold-text" style="font-size:24px;">Арбуз Плюс</div>
             <div class="subtitle">VIP-ключ на 3 месяца</div>
-            
-            <label>Имя</label>
-            <input type="text" id="regNamePlus" placeholder="Ваше имя">
-            
+            <label>Имя</label><input type="text" id="regNamePlus" placeholder="Ваше имя">
             <label>Номер телефона</label>
-            <div class="phone-box">
-                <div class="prefix">+7</div>
-                <input type="tel" id="regPhonePlus" placeholder="999 999-99-99" oninput="formatPhone(this)">
+            <div class="phone-box"><div class="prefix">+7</div><input type="tel" id="regPhonePlus" placeholder="999 999-99-99" oninput="formatPhone(this)"></div>
+            <label>VIP-ключ</label><input type="text" id="regVipKey" placeholder="ARBZ-VIP1-2024-PLUS" style="text-transform:uppercase;letter-spacing:1px;">
+            <button class="btn btn-gold" id="btnRegPlus">Получить код</button>
+            <div id="codeBlockPlus" class="hidden">
+                <label>Код из Telegram (@codecap_bot)</label><input type="text" id="codePlus" placeholder="000000" maxlength="6">
+                <button class="btn btn-gold" id="confirmPlus">Подтвердить</button>
             </div>
-            
-            <label>VIP-ключ</label>
-            <input type="text" id="regVipKey" placeholder="ARBZ-VIP1-2024-PLUS" style="text-transform:uppercase;letter-spacing:1px;">
-            
-            <button class="btn btn-gold" id="btnRegPlus">Активировать на 3 месяца</button>
         </div>
 
-        <!-- Список чатов -->
         <div id="chatsScreen" class="screen hidden" style="padding:0;">
-            <div class="nav-bar">
-                <span class="nav-title" id="navTitle">🍉 Арбуз</span>
-                <button class="nav-btn" id="btnProfile">Профиль</button>
-            </div>
-            <input type="text" class="search-input" id="searchInput" placeholder="Поиск по номеру">
+            <div class="nav-bar"><span class="nav-title" id="navTitle">🍉 Арбуз</span><button class="nav-btn" id="btnProfile">Профиль</button></div>
+            <input type="text" class="search-input" id="searchInput" placeholder="Поиск по имени или номеру">
             <div class="list" id="chatsList"></div>
         </div>
 
-        <!-- Профиль -->
         <div id="profileScreen" class="screen hidden">
             <button class="back-btn" id="btnBackProfile">← Назад</button>
             <div class="title" style="font-size:24px;padding:20px 0;">Профиль</div>
             <div class="profile-card">
-                <div class="profile-row"><span>Имя</span><span id="profName"></span></div>
-                <div class="profile-row"><span>Телефон</span><span id="profPhone"></span></div>
-                <div class="profile-row"><span>Версия</span><span id="profVersion"></span></div>
-                <div class="profile-row" id="profExpiryRow"><span>Истекает</span><span id="profExpiry"></span></div>
+                <div class="profile-row"><span>Имя</span><span id="profName" style="color:#0A84FF;"></span></div>
+                <div class="profile-row"><span>Телефон</span><span id="profPhone" style="color:#30D158;"></span></div>
+                <div class="profile-row"><span>Версия</span><span id="profVersion" style="color:#FFD60A;"></span></div>
+                <div class="profile-row" id="profExpiryRow"><span>VIP истекает</span><span id="profExpiry" style="color:#FF453A;"></span></div>
             </div>
             <button class="btn btn-danger" id="btnLogout">Выйти</button>
         </div>
 
-        <!-- Чат -->
         <div id="chatScreen" class="screen hidden" style="padding:0;">
             <div class="chat-header">
                 <button class="back-btn" id="btnBack">←</button>
                 <div class="avatar-small" id="chatAv"></div>
-                <div>
-                    <div class="chat-name" id="chatName"></div>
-                    <div class="chat-phone" id="chatPhone"></div>
-                </div>
+                <div><div class="chat-name" id="chatName"></div><div class="chat-phone" id="chatPhone"></div></div>
             </div>
             <div class="messages" id="messagesList"></div>
-            <div class="input-bar">
-                <input type="text" id="msgInput" placeholder="Сообщение">
-                <button class="send-btn" id="sendBtn">↑</button>
-            </div>
+            <div class="input-bar"><input type="text" id="msgInput" placeholder="Сообщение"><button class="send-btn" id="sendBtn">↑</button></div>
         </div>
-
         <div class="toast" id="toast"></div>
     </div>
-
     <script src="script.js"></script>
 </body>
 </html>
